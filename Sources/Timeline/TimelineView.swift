@@ -469,8 +469,22 @@ public final class TimelineView: UIView {
                 }
             } else {
                 let lastEvent = overlappingEvents.last!
-                if (longestEvent.descriptor.dateInterval.intersects(event.descriptor.dateInterval) && (longestEvent.descriptor.dateInterval.end != event.descriptor.dateInterval.start || style.eventGap <= 0.0)) ||
-                    (lastEvent.descriptor.dateInterval.intersects(event.descriptor.dateInterval) && (lastEvent.descriptor.dateInterval.end != event.descriptor.dateInterval.start || style.eventGap <= 0.0)) {
+                
+                // Check if the event truly overlaps (not just touches at endpoints) with any existing event
+                let hasRealOverlap = overlappingEvents.contains { existingEvent in
+                    let currentInterval = event.descriptor.dateInterval
+                    let existingInterval = existingEvent.descriptor.dateInterval
+                    
+                    // Two events truly overlap if one starts before the other ends, 
+                    // excluding the case where one ends exactly when the other starts
+                    return (currentInterval.start < existingInterval.end && currentInterval.end > existingInterval.start) &&
+                           !(currentInterval.start == existingInterval.end || currentInterval.end == existingInterval.start)
+                }
+                
+                // Only group events if they have real overlap or if eventGap <= 0 (forcing overlap display)
+                if hasRealOverlap || (style.eventGap <= 0.0 && 
+                    (longestEvent.descriptor.dateInterval.intersects(event.descriptor.dateInterval) ||
+                     lastEvent.descriptor.dateInterval.intersects(event.descriptor.dateInterval))) {
                     overlappingEvents.append(event)
                     continue
                 }
