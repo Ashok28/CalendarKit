@@ -9,6 +9,7 @@ public protocol EventDescriptor: AnyObject {
     var lineBreakMode: NSLineBreakMode? {get}
     var font : UIFont {get}
     var color: UIColor {get}
+    var lineColor: UIColor? {get}
     var textColor: UIColor {get}
     var backgroundColor: UIColor {get}
     var editedEvent: EventDescriptor? {get set}

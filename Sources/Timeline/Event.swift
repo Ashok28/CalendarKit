@@ -11,6 +11,7 @@ public final class Event: EventDescriptor {
             updateColors()
         }
     }
+    public var lineColor: UIColor?
     public var backgroundColor = SystemColors.systemBlue.withAlphaComponent(0.3)
     public var textColor = SystemColors.label
     public var font = UIFont.boldSystemFont(ofSize: 12)
@@ -31,6 +32,7 @@ public final class Event: EventDescriptor {
         cloned.attributedText = attributedText
         cloned.lineBreakMode = lineBreakMode
         cloned.color = color
+        cloned.lineColor = lineColor
         cloned.backgroundColor = backgroundColor
         cloned.textColor = textColor
         cloned.userInfo = userInfo

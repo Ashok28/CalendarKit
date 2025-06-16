@@ -3,6 +3,7 @@ import UIKit
 open class EventView: UIView {
     public var descriptor: EventDescriptor?
     public var color = SystemColors.label
+    public var lineColor = SystemColors.label
     
     public var contentHeight: Double {
         textView.frame.height
@@ -34,6 +35,7 @@ open class EventView: UIView {
     private func configure() {
         clipsToBounds = false
         color = tintColor
+        lineColor = tintColor
         addSubview(textView)
         
         for (idx, handle) in eventResizeHandles.enumerated() {
@@ -57,8 +59,17 @@ open class EventView: UIView {
         descriptor = event
         backgroundColor = .clear
         layer.backgroundColor = event.backgroundColor.cgColor
+        
+        let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
+        if leftToRight {
+            layer.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
+        } else {
+            layer.maskedCorners = [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
+        }
         layer.cornerRadius = 5
+        
         color = event.color
+        lineColor = event.lineColor ?? event.color
         eventResizeHandles.forEach{
             $0.borderColor = event.color
             $0.isHidden = event.editedEvent == nil
@@ -104,21 +115,67 @@ open class EventView: UIView {
         guard let context = UIGraphicsGetCurrentContext() else {
             return
         }
-        context.interpolationQuality = .none
+        
         context.saveGState()
-        context.setStrokeColor(color.cgColor)
-        context.setLineWidth(3)
-        context.setLineCap(.round)
-        context.translateBy(x: 0, y: 0.5)
+        
         let leftToRight = UIView.userInterfaceLayoutDirection(for: semanticContentAttribute) == .leftToRight
-        let x: Double = leftToRight ? 0 : frame.width - 1.0  // 1 is the line width
-        let y: Double = 0
-        let hOffset: Double = 3
-        let vOffset: Double = 5
-        context.beginPath()
-        context.move(to: CGPoint(x: x + 2 * hOffset, y: y + vOffset))
-        context.addLine(to: CGPoint(x: x + 2 * hOffset, y: (bounds).height - vOffset))
-        context.strokePath()
+        let lineWidth: CGFloat = 3.0
+        let cornerRadius: CGFloat = 1.5 // Half of line width for rounded ends
+        
+        // Create the line rectangle pinned to the appropriate edge
+        let lineRect: CGRect
+        if leftToRight {
+            // Pin to left edge
+            lineRect = CGRect(x: 0, y: 0, width: lineWidth, height: bounds.height)
+        } else {
+            // Pin to right edge  
+            lineRect = CGRect(x: bounds.width - lineWidth, y: 0, width: lineWidth, height: bounds.height)
+        }
+        
+        // Create rounded rectangle path with corners only on the pinned edge
+        let linePath = UIBezierPath()
+        if leftToRight {
+            // For left edge: round left corners only
+            linePath.move(to: CGPoint(x: lineRect.minX + cornerRadius, y: lineRect.minY))
+            linePath.addLine(to: CGPoint(x: lineRect.maxX, y: lineRect.minY))
+            linePath.addLine(to: CGPoint(x: lineRect.maxX, y: lineRect.maxY))
+            linePath.addLine(to: CGPoint(x: lineRect.minX + cornerRadius, y: lineRect.maxY))
+            linePath.addArc(withCenter: CGPoint(x: lineRect.minX + cornerRadius, y: lineRect.maxY - cornerRadius), 
+                           radius: cornerRadius, 
+                           startAngle: .pi/2, 
+                           endAngle: .pi, 
+                           clockwise: true)
+            linePath.addLine(to: CGPoint(x: lineRect.minX, y: lineRect.minY + cornerRadius))
+            linePath.addArc(withCenter: CGPoint(x: lineRect.minX + cornerRadius, y: lineRect.minY + cornerRadius), 
+                           radius: cornerRadius, 
+                           startAngle: .pi, 
+                           endAngle: 3 * .pi/2, 
+                           clockwise: true)
+        } else {
+            // For right edge: round right corners only
+            linePath.move(to: CGPoint(x: lineRect.minX, y: lineRect.minY))
+            linePath.addLine(to: CGPoint(x: lineRect.maxX - cornerRadius, y: lineRect.minY))
+            linePath.addArc(withCenter: CGPoint(x: lineRect.maxX - cornerRadius, y: lineRect.minY + cornerRadius), 
+                           radius: cornerRadius, 
+                           startAngle: 3 * .pi/2, 
+                           endAngle: 0, 
+                           clockwise: true)
+            linePath.addLine(to: CGPoint(x: lineRect.maxX, y: lineRect.maxY - cornerRadius))
+            linePath.addArc(withCenter: CGPoint(x: lineRect.maxX - cornerRadius, y: lineRect.maxY - cornerRadius), 
+                           radius: cornerRadius, 
+                           startAngle: 0, 
+                           endAngle: .pi/2, 
+                           clockwise: true)
+            linePath.addLine(to: CGPoint(x: lineRect.minX, y: lineRect.maxY))
+            linePath.addLine(to: CGPoint(x: lineRect.minX, y: lineRect.minY))
+        }
+        linePath.close()
+        
+        // Fill the path with the line color
+        context.setFillColor(lineColor.cgColor)
+        context.addPath(linePath.cgPath)
+        context.fillPath()
+        
         context.restoreGState()
     }
     
